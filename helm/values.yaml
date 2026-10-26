@@ -1,0 +1,118 @@
+# Default configuration for the devops-assessment Helm chart.
+
+# Number of replicas when autoscaling is disabled.
+replicaCount: 2
+
+# Flask application image stored in Amazon ECR.
+image:
+  repository: 121378764632.dkr.ecr.eu-west-1.amazonaws.com/devops-assessment
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+# ECR access uses the worker node's IAM permissions.
+# No image pull secret is required when ECR permissions are configured correctly.
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Kubernetes ServiceAccount.
+serviceAccount:
+  create: true
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+# Pod-level security settings.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+
+# Container security settings.
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Flask listens on port 5000.
+service:
+  type: ClusterIP
+  port: 5000
+
+# Public access through AWS Load Balancer Controller.
+# The ALB controller must be installed separately.
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/success-codes: "200"
+  hosts:
+    - host: ""
+      paths:
+        - path: /demo
+          pathType: Prefix
+  tls: []
+
+# Not using Kubernetes Gateway API for this assessment.
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  hostnames: []
+  rules: []
+
+# Resource requests are needed for CPU-based HPA calculations.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Flask health endpoint.
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 5
+
+# Horizontal Pod Autoscaler.
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+# Application configuration supplied through a ConfigMap.
+config:
+  APP_ENV: "assessment"
+
+# Non-sensitive demonstration value supplied through a Kubernetes Secret.
+# Replace this with a genuinely required secret only if the application needs one.
+secret:
+  APP_SECRET: "change-me-before-deployment"
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
